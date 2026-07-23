@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>筆元釜山行 🌊</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Zen Maru Gothic', sans-serif; background-color: #F7F9FC; -webkit-tap-highlight-color: transparent; }
+        .app-card { border-radius: 28px; box-shadow: 0 8px 20px rgba(0,0,0,0.03); }
+        .active-tab { color: #3B82F6; font-weight: 700; transform: translateY(-2px); }
+        .ocean-gradient { background: linear-gradient(135deg, #0077FF 0%, #00A3FF 100%); }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .tag-eat { background: #FFEDD5; color: #F97316; }
+        .tag-buy { background: #FCE7F3; color: #DB2777; }
+        .tag-photo { background: #E0F2FE; color: #0369A1; }
+    </style>
+</head>
+<body class="max-w-md mx-auto overflow-x-hidden">
+    <div id="app" class="min-h-screen pb-32">
+        
+        <!-- Header -->
+        <header class="p-6 pb-10 ocean-gradient text-white rounded-b-[45px] shadow-lg relative">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h1 class="text-2xl font-black tracking-tight">筆元釜山行 🇰🇷</h1>
+                    <p class="text-sm opacity-80 mt-1">2026.07.27 - 08.03</p>
+                </div>
+                <div class="bg-white/20 p-2 rounded-full text-xl">🌊</div>
+            </div>
+            <!-- Tab Selector -->
+            <div class="mt-6 flex bg-white/10 p-1 rounded-2xl backdrop-blur-md">
+                <button @click="activeTab = 'itinerary'" :class="activeTab === 'itinerary' ? 'bg-white text-blue-600' : 'text-white'" class="flex-1 py-2 rounded-xl text-xs font-bold transition-all">行程表</button>
+                <button @click="activeTab = 'ledger'" :class="activeTab === 'ledger' ? 'bg-white text-blue-600' : 'text-white'" class="flex-1 py-2 rounded-xl text-xs font-bold transition-all">兩人分帳</button>
+                <button @click="activeTab = 'guide'" :class="activeTab === 'guide' ? 'bg-white text-blue-600' : 'text-white'" class="flex-1 py-2 rounded-xl text-xs font-bold transition-all">行前指南</button>
+            </div>
+        </header>
+
+        <!-- 1. 行程表分頁 -->
+        <main v-if="activeTab === 'itinerary'" class="px-5 -mt-6 animate-fadeIn">
+            <!-- Day Selector -->
+            <div class="flex overflow-x-auto gap-3 py-4 hide-scrollbar">
+                <button v-for="n in 8" @click="currentDay = n" 
+                    :class="currentDay === n ? 'bg-blue-500 text-white shadow-lg scale-105' : 'bg-white text-gray-400'"
+                    class="flex-none w-14 h-14 rounded-2xl flex flex-col items-center justify-center transition-all font-bold">
+                    <span class="text-[9px]">DAY</span>{{n}}
+                </button>
+            </div>
+
+            <!-- Weather/Outfit Tips -->
+            <div class="bg-white p-4 rounded-[25px] app-card mb-6 border-l-8 border-yellow-400">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">👔</span>
+                    <div>
+                        <p class="text-[10px] font-bold text-gray-400 uppercase">今日建議與提示</p>
+                        <p class="text-xs text-gray-700 font-medium">{{ dayTips[currentDay-1] }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Itinerary List -->
+            <div class="space-y-6">
+                <div v-for="(item, idx) in itineraryData[currentDay-1]" :key="idx" class="app-card bg-white overflow-hidden flex flex-col">
+                    <!-- Category Line -->
+                    <div :class="getCatColor(item.category)" class="h-1.5 w-full"></div>
+                    
+                    <div class="p-5">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-blue-500 font-black text-sm">{{item.time}}</span>
+                            <div class="flex gap-1">
+                                <span v-for="tag in item.tags" :class="getTagClass(tag)" class="text-[10px] px-2 py-0.5 rounded-full font-bold">
+                                    {{tag}}
+                                </span>
+                            </div>
+                        </div>
+
+                        <h3 class="text-lg font-bold text-gray-800">{{item.name}}</h3>
+                        
+                        <!-- 交通方式 (Highlight) -->
+                        <div class="mt-3 p-3 bg-blue-50 rounded-2xl flex items-start gap-2 border border-blue-100">
+                            <span class="text-sm">🚌</span>
+                            <p class="text-xs text-blue-700 leading-relaxed"><span class="font-bold">交通：</span>{{item.transport}}</p>
+                        </div>
+
+                        <!-- 特色說明 -->
+                        <div class="mt-3 flex items-start gap-2 px-1">
+                            <span class="text-sm">💡</span>
+                            <p class="text-xs text-gray-500 leading-relaxed"><span class="font-bold">特色：</span>{{item.desc}}</p>
+                        </div>
+
+                        <!-- 拍照小技巧 -->
+                        <div class="mt-3 bg-gray-50 p-3 rounded-2xl text-[10px] text-gray-500 italic">
+                            📸 拍照建議：{{item.photoTips}}
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="mt-4 grid grid-cols-2 gap-2">
+                            <button @click="openMap(item.naverQuery, 'naver')" class="bg-blue-600 text-white py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1 active:scale-95 transition-all">
+                                📍 NAVER 地圖
+                            </button>
+                            <button @click="openMap(item.name, 'google')" class="bg-gray-100 text-gray-600 py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1 active:scale-95 transition-all">
+                                🌐 Google Map
+                            </button>
+                        </div>
+
+                        <!-- Info Buttons -->
+                        <div class="mt-3 flex gap-4 px-2">
+                            <button @click="openMap(item.name + ' parking', 'google')" class="text-[10px] text-gray-400 underline">🅿️ 附近停車</button>
+                            <button @click="openMap(item.name + ' gas station', 'google')" class="text-[10px] text-gray-400 underline">⛽ 加油站</button>
+                            <label class="ml-auto text-[10px] text-blue-500 font-bold cursor-pointer">
+                                📷 上傳旅記 <input type="file" class="hidden" @change="handleUpload($event, item)">
+                            </label>
+                        </div>
+                        <img v-if="item.photo" :src="item.photo" class="mt-3 rounded-2xl w-full h-32 object-cover">
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 2. 分帳分頁 -->
+        <main v-if="activeTab === 'ledger'" class="px-5 mt-6 animate-fadeIn">
+            <div class="bg-white p-6 rounded-[35px] app-card">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-black">💰 筆元分帳</h2>
+                    <button @click="toggleCurrency" class="text-xs font-bold bg-blue-100 text-blue-600 px-3 py-1 rounded-full">
+                        切換為 {{ currency === 'KRW' ? '台幣 TWD' : '韓元 KRW' }}
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <input v-model="expense.title" placeholder="項目 (例如: 校村炸雞)" class="w-full bg-gray-50 p-4 rounded-2xl border-none outline-none text-sm">
+                    <input v-model.number="expense.amount" type="number" placeholder="輸入金額" class="w-full bg-gray-50 p-4 rounded-2xl border-none outline-none text-sm font-bold">
+                    
+                    <div class="flex gap-2">
+                        <button @click="expense.payer = '鉛筆'" :class="expense.payer === '鉛筆' ? 'bg-blue-500 text-white shadow-md' : 'bg-gray-100 text-gray-400'" class="flex-1 py-4 rounded-2xl font-bold text-sm transition-all">鉛筆付</button>
+                        <button @click="expense.payer = '元'" :class="expense.payer === '元' ? 'bg-blue-500 text-white shadow-md' : 'bg-gray-100 text-gray-400'" class="flex-1 py-4 rounded-2xl font-bold text-sm transition-all">元付</button>
+                    </div>
+                    
+                    <button @click="addExpense" class="w-full bg-black text-white py-4 rounded-2xl font-black mt-2 active:scale-95 transition-all">新增紀錄</button>
+                </div>
+            </div>
+
+            <!-- Result -->
+            <div class="mt-6 bg-blue-600 text-white p-6 rounded-[35px] shadow-xl relative overflow-hidden">
+                <div class="relative z-10">
+                    <p class="text-xs opacity-70 mb-1 italic">匯率參考 1:42</p>
+                    <div class="text-3xl font-black mb-4">{{ settlementMessage }}</div>
+                    <div class="h-[1px] bg-white/20 mb-4"></div>
+                    <div class="flex justify-between text-xs font-bold">
+                        <span>鉛筆總付: {{ formatMoney(pencilTotal) }}</span>
+                        <span>元總付: {{ formatMoney(yuanTotal) }}</span>
+                    </div>
+                    <button @click="records = []" class="mt-4 text-[10px] underline opacity-50">清除所有紀錄</button>
+                </div>
+                <div class="absolute -right-4 -bottom-4 text-7xl opacity-10">💸</div>
+            </div>
+
+            <!-- Record List -->
+            <div class="mt-6 space-y-2">
+                <div v-for="(r, i) in records" :key="i" class="bg-white p-4 rounded-2xl flex justify-between items-center text-sm">
+                    <div>
+                        <span class="font-bold">{{ r.title }}</span>
+                        <span class="ml-2 text-[10px] bg-gray-100 px-2 py-0.5 rounded text-gray-400">{{ r.payer }}</span>
+                    </div>
+                    <span class="font-black">{{ r.amount.toLocaleString() }} {{ currency }}</span>
+                </div>
+            </div>
+        </main>
+
+        <!-- 3. 行前指南分頁 -->
+        <main v-if="activeTab === 'guide'" class="px-5 mt-6 animate-fadeIn">
+            <div class="bg-white p-6 rounded-[35px] app-card mb-6">
+                <h2 class="text-xl font-black mb-4 flex items-center gap-2">🚀 出發前必做</h2>
+                <div class="space-y-4">
+                    <div v-for="(g, i) in guideList" :key="i" class="flex items-start gap-3">
+                        <span class="bg-blue-50 text-blue-500 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold mt-1">{{i+1}}</span>
+                        <p class="text-sm text-gray-600 leading-relaxed font-medium">{{g}}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4 mb-10">
+                <div v-for="app in appList" class="bg-white p-4 rounded-3xl text-center app-card">
+                    <span class="text-2xl mb-1 block">{{app.icon}}</span>
+                    <p class="text-xs font-black">{{app.name}}</p>
+                    <p class="text-[9px] text-gray-400 mt-1">{{app.use}}</p>
+                </div>
+            </div>
+        </main>
+
+    </div>
+
+    <script>
+        const { createApp, ref, computed } = Vue;
+
+        createApp({
+            setup() {
+                const activeTab = ref('itinerary');
+                const currentDay = ref(1);
+                const currency = ref('KRW');
+                const records = ref([]);
+                const expense = ref({ title: '', amount: null, payer: '鉛筆' });
+
+                const guideList = [
+                    "辦理 SES 快速通關（除了機場，Korean Air 也有辦理處）",
+                    "確認電壓：韓國使用 220V 圓形雙孔插頭",
+                    "公車習慣：上車和下車時都要感應交通卡",
+                    "eSIM / Internet 確認開通情況",
+                    "行李：回程可提前加購行李重量以免現場被收費",
+                    "付款：準備信用卡、Apple Pay 並帶少量現金備用",
+                    "餐廳預約：Catchtable Global 需綁定國外電話/信箱",
+                    "插座檢查：帶一個萬國轉接頭最保險",
+                    "叫車：Kakao T 最好先綁定好信用卡以免現場慌亂"
+                ];
+
+                const appList = [
+                    { icon: '🗺️', name: 'NAVER Map', use: '韓國導航必備' },
+                    { icon: '🚕', name: 'Kakao T', use: '唯一好叫的車' },
+                    { icon: '🗣️', name: 'Papago', use: '最強中韓翻譯' },
+                    { icon: '🍽️', name: 'Catchtable', use: '餐廳訂位用' },
+                    { icon: '🛵', name: 'Baemin', use: '宵夜外送專屬' },
+                    { icon: '💳', name: 'Apple Pay', use: '連鎖店可用' }
+                ];
+
+                const dayTips = [
+                    "✈️ 第一天：抵達後直衝炸雞，記得在機場 Exit 3 搭 Kakao T。",
+                    "🌧️ 第二天：雨天備案，全程室內商圈，推薦 Olive Young 大掃貨。",
+                    "☀️ 第三天：48H Pass 啟用！建議搭計程車跨區最省時省力。",
+                    "☀️ 第四天：Pass 第二天，甘川洞手翻書是免費的記得去換！",
+                    "☀️ 第五天：10:30 前一定要刷進 Spa Land！下午松靜衝浪要穿防曬。",
+                    "🌊 第六天：週六無人機秀 20:00，提前用 Catchtable 訂烤豬皮。",
+                    "🌃 第七天：機張吃螃蟹超划算！荒嶺山夜景建議這一段叫計程車。",
+                    "✈️ 第八天：退房直奔機場，管制區內 CU 優格一定要買！"
+                ];
+
+                const itineraryData = ref([
+                    [ // Day 1
+                        { time: '19:55', category: '景點', name: '金海國際機場', transport: '無', desc: '辦理 SES 出關', tags: ['景點'], naverQuery: '김해국제공항', photoTips: '拍一下釜山機場標誌', photo: null },
+                        { time: '20:30', category: '酒店', name: '하운드호텔 서면범천점', transport: '機場 1 樓 Exit 3 搭 Kakao T (車費約 18,000 韓元)', desc: '鄰近地鐵 1 號線凡內谷站，房間寬敞乾淨。', tags: ['酒店'], naverQuery: '하운드호텔 서면범천점', photoTips: '房間窗外景色或是開箱照', photo: null },
+                        { time: '21:30', category: '食物', name: '교촌치킨 서면점 (校村炸雞)', transport: '飯店步行 3 分鐘至凡內谷站搭地鐵 1 站至西面站 15 號出口，或步行 12 分鐘。', desc: '必點半半炸雞，營業至凌晨 01:00。', tags: ['必吃', '必拍'], naverQuery: '교촌치킨 서면점', photoTips: '炸雞特寫配啤酒', photo: null }
+                    ],
+                    [ // Day 2
+                        { time: '10:30', category: '購物', name: '西面商圈 / Olive Young', transport: '飯店步行 10 分鐘或地鐵 1 站。', desc: '買 IDEAL FOR MEN 護膚、Dr.G 防曬、貝果餅乾。', tags: ['必買'], naverQuery: '올리브영 서면타운', photoTips: '大包小包的戰利品照', photo: null },
+                        { time: '13:30', category: '食物', name: '고기굽는남자 남포점 (烤肉男子)', transport: '西面站搭地鐵 1 號線至札嘎其站 1 號出口。', desc: '必點厚切熟成三層肉，附海鮮蛤蜊湯。', tags: ['必吃'], naverQuery: '고기굽는남자 남포점', photoTips: '專人代烤的肉排整齊排列照', photo: null },
+                        { time: '15:30', category: '購物', name: '樂天超市 光復店', transport: '從燒肉店步行到札嘎其站搭地鐵至南浦站 1 號出口。', desc: '買海帶泡麵、年糕餅乾、辣奶香辛拉麵。', tags: ['必買'], naverQuery: '롯데마트 광복점', photoTips: '推車塞滿的樣子', photo: null },
+                        { time: '18:30', category: '食物', name: 'BIFF 廣場 / 南浦雪濃湯', transport: '樂天超市搭 6/9/11/30 號公車到札嘎其站。', desc: '必吃元祖堅果糖餅；晚餐 24H 南浦雪濃湯。', tags: ['必吃'], naverQuery: '남포설농탕', photoTips: '糖餅流出糖漿的瞬間', photo: null },
+                        { time: '20:30', category: '購物', name: 'Connect Hyundai', transport: '地鐵 1 站至「凡一站」或計程車 3 分鐘。', desc: '2024 新商場，有 Matin Kim、Marithé。', tags: ['必逛'], naverQuery: '커넥트현대', photoTips: '商場時髦的室內設計', photo: null }
+                    ],
+                    [ // Day 3
+                        { time: '10:30', category: '活動', name: 'Skyline Luge 斜坡滑車', transport: '凡內谷搭地鐵 1 號線至教大站，轉東海線至奧西利亞站，轉 1001 公車。', desc: '10:30 準時刷 Pass，體驗兩次衝坡甩尾。', tags: ['必玩'], naverQuery: '스카이라인루지 부산', photoTips: '戴安全帽跟滑車的合照', photo: null },
+                        { time: '12:30', category: '景點', name: '釜山樂天世界', transport: '斜坡滑車正對面，步行 5 分鐘。', desc: '必玩雲霄飛車 Giant Digger 與水上飛車。', tags: ['必玩'], naverQuery: '롯데월드 어드벤처 부산', photoTips: '以城堡為背景的全身照', photo: null },
+                        { time: '16:30', category: '景點', name: 'Busan X the Sky', transport: '樂天世界搭 Kakao T 直達 (約 15 分鐘，10,000 韓元)。', desc: '100 樓全透明步道，打卡全球最高星巴克。', tags: ['必拍'], naverQuery: '부산엑스더스카이', photoTips: '站在透明地板往下拍', photo: null },
+                        { time: '18:30', category: '食物', name: '青沙浦 DIART coffee', transport: '海岸列車下青沙浦站步行 2 分鐘。', desc: '朝聖蜂蜜奶油麵包，配看海景。', tags: ['必吃'], naverQuery: '디아트', photoTips: '奶油麵包特寫跟海景窗戶', photo: null },
+                        { time: '22:30', category: '活動', name: 'YachtHolic 廣安里遊艇', transport: '搭 Kakao T 至「水營灣遊艇競技場」報到。', desc: '深夜看廣安大橋夜景與專屬煙火秀。', tags: ['必拍'], naverQuery: '요트홀릭', photoTips: '煙火爆發的瞬間跟大橋', photo: null }
+                    ],
+                    [ // Day 4
+                        { time: '09:30', category: '景點', name: '甘川洞文化村', transport: '地鐵 1 號線土城站 6 號出口，轉沙下區 1-1 / 西區 2 綠巴。', desc: 'Pass 免費製作手翻書，拍小王子。', tags: ['必拍'], naverQuery: '감천문화마을', photoTips: '背對鏡頭看小王子的背影', photo: null },
+                        { time: '12:00', category: '景點', name: '松島海上纜車', transport: '搭計程車直達 (約 15 分鐘，7,000 韓元)。', desc: '水晶透明車廂，Pass 附贈雷射槍對戰。', tags: ['必玩'], naverQuery: '송도해상케이블카', photoTips: '纜車內俯瞰海面的透視感', photo: null },
+                        { time: '15:30', category: '景點', name: 'ARTE Museum 影島', transport: '搭計程車 (約 15 分鐘，8,000 韓元)。', desc: '韓國最大沉浸式數位藝術館。', tags: ['必看'], naverQuery: '아르떼뮤지엄 부산', photoTips: '光影巨浪前的剪影照', photo: null },
+                        { time: '18:00', category: '食物', name: '明星一隻雞 (影島店)', transport: '搭公車 8 或 30 號返回影島大橋頭即達。', desc: '湯頭極甜，雞肉蘸蒜蓉辣醬，最後煮刀削麵。', tags: ['必吃'], naverQuery: '명성닭한마리', photoTips: '整隻雞在鍋裡的樣子', photo: null }
+                    ],
+                    [ // Day 5
+                        { time: '09:15', category: '活動', name: 'Spa Land 汗蒸幕', transport: '地鐵 2 號線至 Centum City 站。', desc: 'Pass 壓軸！09:15 前成功進場可免費玩 4 小時。', tags: ['必去'], naverQuery: '스파랜드 센텀시티', photoTips: '羊角頭毛巾照', photo: null },
+                        { time: '15:00', category: '活動', name: '松靜海灘衝浪 Holic', transport: '搭計程車直達 (約 20 分鐘，12,000 韓元)。', desc: '專業教練指導，防寒衣與板全包。', tags: ['必玩'], naverQuery: '서프홀릭', photoTips: '拿著衝浪板站在沙灘上', photo: null },
+                        { time: '19:00', category: '食物', name: '神田拉麵 (Kanda Soba)', transport: '東海線松靜站回教大轉地鐵，或 1001 號紅巴直達西面。', desc: '必點東京超濃郁拌麵 (Maje Soba)。', tags: ['必吃'], naverQuery: '칸다소바 서면점', photoTips: '攪拌前的拉麵俯拍照', photo: null }
+                    ],
+                    [ // Day 6
+                        { time: '10:00', category: '景點', name: '廣安里海灘 (海綿寶寶)', transport: '地鐵 1 號線轉 2 號線至廣安站，3/5 號出口走 10 分。', desc: '7/1-8/31 期間限定海綿寶寶造景。', tags: ['必拍'], naverQuery: '광안리해수욕장', photoTips: '跟派大星沙灘造景合拍', photo: null },
+                        { time: '12:00', category: '食物', name: 'NASARI 食堂', transport: '沿海灘向北步行約 12 分鐘。', desc: '海景第一排，必點鮮貝刀削麵。', tags: ['必吃'], naverQuery: '나사리식당 광안점', photoTips: '窗外海景配上一大碗蛤蜊麵', photo: null },
+                        { time: '14:30', category: '活動', name: '白淺灘文化村 / 足浴', transport: '地鐵南浦站 6 號出口換公車 7/9/71/82 號。', desc: 'Footbath Cafe 泡腳看海。', tags: ['必去'], naverQuery: '흰여울문화마을', photoTips: '腳泡在水裡拍海天一線', photo: null },
+                        { time: '18:30', category: '食物', name: '超必殺烤豬皮 (廣安店)', transport: '從白淺灘回南浦站轉地鐵至廣安站，提前用 Catchtable 取號。', desc: '招牌厚切滷烤豬皮外酥內 Q。', tags: ['必吃'], naverQuery: '초필살돼지구이 광안점', photoTips: '金黃色豬皮特寫', photo: null },
+                        { time: '20:00', category: '活動', name: '廣安里無人機秀', transport: '烤豬皮店走回沙灘。', desc: '週六限定，數百架無人機燈光秀。', tags: ['必看'], naverQuery: '광안리 드론쇼', photoTips: '天空排成圖案的樣子', photo: null }
+                    ],
+                    [ // Day 7
+                        { time: '10:00', category: '購物', name: '海雲台買伴手禮', transport: '地鐵 2 號線至海雲台站。', desc: '自然島鹽麵包、Busan Bada Sand、百貨 WOOYOUNGMI。', tags: ['必買'], naverQuery: '해운대', photoTips: '剛買到的鹽麵包跟店門口', photo: null },
+                        { time: '12:00', category: '食物', name: '機張市場 鱈蟹之家', transport: '海雲台站搭東海線直達「機張站」。', desc: '大吃帝王蟹、蟹膏炒飯。', tags: ['必吃'], naverQuery: '기장 대게하우스', photoTips: '整隻紅通通的大螃蟹', photo: null },
+                        { time: '15:00', category: '景點', name: '海東龍宮寺', transport: '機張市場搭計程車 (約 10 分鐘，8,000 韓元)。', desc: '全韓唯一海邊佛寺。', tags: ['必去'], naverQuery: '해동용궁사', photoTips: '石塔跟海浪的大景', photo: null },
+                        { time: '19:30', category: '景點', name: '荒嶺山烽火台', transport: '西面搭計程車上山 (一定要叫車，爬坡 40 分鐘會累死)。', desc: '百萬夜景，俯看釜山全景。', tags: ['必拍'], naverQuery: '황령산봉수대', photoTips: '以城市燈火為背景的側臉照', photo: null }
+                    ],
+                    [ // Day 8
+                        { time: '08:00', category: '交通', name: '返台 - 金海機場', transport: '飯店門口搭 Kakao T (約 25 分鐘，18,000 韓元)。', desc: '安檢後管制區 CU 買希臘優格 ViYott。', tags: ['景點'], naverQuery: '김해국제공항', photoTips: '拿著優格跟登機門合照', photo: null }
+                    ]
+                ]);
+
+                // 分帳邏輯
+                const addExpense = () => {
+                    if (expense.value.amount > 0 && expense.value.title) {
+                        records.value.push({ ...expense.value });
+                        expense.value.title = '';
+                        expense.value.amount = null;
+                    }
+                };
+
+                const toggleCurrency = () => currency.value = currency.value === 'KRW' ? 'TWD' : 'KRW';
+                const formatMoney = (val) => Math.round(val).toLocaleString() + ' ' + currency.value;
+                const pencilTotal = computed(() => records.value.filter(r => r.payer === '鉛筆').reduce((s, r) => s + r.amount, 0));
+                const yuanTotal = computed(() => records.value.filter(r => r.payer === '元').reduce((s, r) => s + r.amount, 0));
+                const settlementMessage = computed(() => {
+                    if (records.value.length === 0) return "尚無紀錄";
+                    const diff = (pencilTotal.value - yuanTotal.value) / 2;
+                    if (diff === 0) return "剛好抵銷！";
+                    return diff > 0 ? `元 應給 鉛筆 ${formatMoney(Math.abs(diff))}` : `鉛筆 應給 元 ${formatMoney(Math.abs(diff))}`;
+                });
+
+                // 其他工具
+                const getCatColor = (cat) => ({ '食物': 'bg-orange-400', '活動': 'bg-purple-400', '購物': 'bg-pink-400', '景點': 'bg-teal-500', '酒店': 'bg-sky-500', '交通': 'bg-gray-400' }[cat]);
+                const getTagClass = (tag) => ({ '必吃': 'tag-eat', '必買': 'tag-buy', '必拍': 'tag-photo' }[tag] || 'bg-gray-100 text-gray-500');
+                const handleUpload = (e, item) => { const f = e.target.files[0]; if (f) item.photo = URL.createObjectURL(f); };
+                const openMap = (q, type) => {
+                    const encoded = encodeURIComponent(q);
+                    const url = type === 'naver' ? `https://map.naver.com/v5/search/${encoded}` : `https://www.google.com/maps/search/${encoded}`;
+                    window.open(url, '_blank');
+                };
+
+                return { activeTab, currentDay, itineraryData, dayTips, guideList, appList, expense, records, addExpense, pencilTotal, yuanTotal, settlementMessage, currency, toggleCurrency, formatMoney, getCatColor, getTagClass, handleUpload, openMap };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
